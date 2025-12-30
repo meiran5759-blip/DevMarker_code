@@ -13,7 +13,7 @@ import loompy
 from collections import Counter
 import cellhint
 
-####合并6套数据集，保留每套数据集原有的celltype注释
+####Merge six datasets and retain the original celltype annotations for each dataset
 velmeshev_counts = sc.read_10x_mtx('/gpfs/hpc/home/chenchao/ranm/2nd_3rd_exp/velmeshev/', var_names='gene_symbols', cache=True)
 meta = pd.read_csv(r'/gpfs/hpc/home/chenchao/ranm/2nd_3rd_exp/metadata.tsv',delimiter='\t')
 indices_fetal = meta[meta['age'].str.contains('GW|ga')].index
@@ -35,13 +35,13 @@ velmeshev_counts = velmeshev_counts[~velmeshev_counts.obs['Celltype'].isin(del_c
 velmeshev_counts = velmeshev_counts[:, ~velmeshev_counts.var_names.duplicated()]
 velmeshev_counts.var.rename(columns={'gene_ids': 'Gene'}, inplace=True)
 
-####2022_Ramos的metadata数据处理
+####2022_Ramos
 directory_path = "/gpfs/hpc/home/chenchao/ranm/SCvsSN/SN_Datasets/2022_Ramos/metadata"
 csv_files = [os.path.join(directory_path, file) for file in os.listdir(directory_path) if file.endswith('.csv')]
 Ramos_metadata = pd.concat([pd.read_csv(file) for file in csv_files], axis=0)
 Ramos_metadata.columns = ['CellID'] + list(Ramos_metadata.columns[1:]) ####修改第一列的列名
 Ramos_metadata = Ramos_metadata.iloc[:, [0, 1, 11]]
-#对细胞名字进行统一
+
 Ramos_metadata['CellID_first_part'] = Ramos_metadata['CellID'].str.split('_').str[0]
 Ramos_metadata['CellID'] = 'Ramos_' + Ramos_metadata['sample'] + '_' + Ramos_metadata['CellID_first_part']
 Ramos_metadata.drop(columns=['CellID_first_part'], inplace=True)
@@ -59,7 +59,7 @@ replacement_rules = pd.DataFrame({'Original': table(Ramos_metadata['celltypes'])
                                   'Replacement': ['EN','EN','IN','IPC','EN','Ast','Unknow','EN','gIPC','OPC','CycPro','EN','Mic','VSMC','IPC','gIPC','gIPC','EN','RG','OPC','RG','RG','EPD','EN','IN']})
 Ramos_metadata['Celltype'] = Ramos_metadata['celltypes'].replace(dict(zip(replacement_rules['Original'], replacement_rules['Replacement'])))
 
-####2022_Herring的metadata的数据处理
+####2022_Herring
 Herring_cellID = velmeshev_counts.obs[velmeshev_counts.obs['Dataset'] == 'Herring'].index
 Herring_metadata = pd.read_csv('/gpfs/hpc/home/chenchao/ranm/SCvsSN/SN_Datasets/2022_Herring/metadata/RNA-all_BCs-meta-data.csv')
 Herring_metadata['cell_part1'] = Herring_metadata['cell'].str.split('-').str[0]
@@ -77,7 +77,7 @@ replacement_rules = pd.DataFrame({'Original': table(Herring_metadata['major_clus
                                   'Replacement': ['EN','IN','EN','Ast','EN','EN','IN','EN','IN','OPC','Mic','IN','IN','Olig','Poor-Quality','IN','IN','IN']})
 Herring_metadata['Celltype'] = Herring_metadata['major_clust'].replace(dict(zip(replacement_rules['Original'], replacement_rules['Replacement'])))
 
-####2021_Trevino的metadata数据处理
+####2021_Trevino
 Trevino_cellID = velmeshev_counts.obs[velmeshev_counts.obs['Dataset'] == 'Trevino'].index
 Trevino_metadata = pd.read_csv('/gpfs/hpc/home/chenchao/ranm/SCvsSN/SN_Datasets/2021_Trevino/GSE162170_multiome_cell_metadata.txt', sep='\t')
 Trevino_metadata['cell'] = 'Trevino_' + Trevino_metadata['cell']
@@ -92,7 +92,7 @@ replacement_rules = pd.DataFrame({'Original': table(Trevino_metadata['celltype']
                                   'Replacement': ['EN','IN','EN','IN','EN','EN','IN','RG','EN','EN','CycPro','gIPC']})
 Trevino_metadata['Celltype'] = Trevino_metadata['celltype'].replace(dict(zip(replacement_rules['Original'], replacement_rules['Replacement'])))
 
-####2023_Cameron的数据处理
+####2023_Cameron
 metadata_path = '/gpfs/hpc/home/chenchao/ranm/SCvsSN/SN_Datasets/2023_Cameron/cameron_5region_metadata'
 txt_files = [f for f in os.listdir(metadata_path) if f.endswith('.txt')]
 data_frames = []
@@ -122,7 +122,6 @@ merge_count = data_frames[0]
 for df in data_frames[1:]:
     merge_count = merge_count.join(df, how='inner')
 
-####构建anndata对象
 merge_count_transposed = merge_count.T
 metadata_cameron.set_index('cells', inplace=True)
 metadata_cameron = metadata_cameron.sort_index()
@@ -133,14 +132,13 @@ cameron_adata.obs['Dataset'] = dataset_values
 cameron_adata.obs = cameron_adata.obs.drop(columns=['cellIDs','sample'])
 PCW_values = ['14'] * len(cameron_adata.obs)
 cameron_adata.obs['PCW'] = PCW_values
-####删除CR细胞和N细胞
 cameron_adata = cameron_adata[~cameron_adata.obs['Celltype'].isin(['CR', 'N'])]
 cameron_adata = cameron_adata[~cameron_adata.obs_names.str.contains('Cer')]
 replacement_rules = pd.DataFrame({'Original': table(cameron_adata.obs['Celltype']).element,
                                   'Replacement': ['RG','EN','IN','Mic','CycPro','Endo','OPC','IPC']})
 cameron_adata.obs['Celltype'] = cameron_adata.obs['Celltype'].replace(dict(zip(replacement_rules['Original'], replacement_rules['Replacement'])))
 
-####2023_Zhu的数据处理
+####2023_Zhu
 folder = '/gpfs/hpc/home/chenchao/ranm/SCvsSN/SN_Datasets/2023_Zhu/ZHU'
 Zhu_2023 = sc.read_10x_mtx(folder, var_names='gene_symbols')
 Zhu_metadata = pd.read_csv('/gpfs/hpc/home/chenchao/ranm/SCvsSN/SN_Datasets/2023_Zhu/scp_metadata.csv')
